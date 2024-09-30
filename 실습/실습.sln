@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "실습", "실습\실습.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "실습_2", "실습_2\실습_2.vcxproj", "{9D40E6BB-F652-44AA-AAC4-7CB21EC4315C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "실습_3", "실습_3\실습_3.vcxproj", "{1527FC51-C6B5-4B21-8E34-214E91AA2DC2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +33,14 @@ Global
 		{9D40E6BB-F652-44AA-AAC4-7CB21EC4315C}.Release|x64.Build.0 = Release|x64
 		{9D40E6BB-F652-44AA-AAC4-7CB21EC4315C}.Release|x86.ActiveCfg = Release|Win32
 		{9D40E6BB-F652-44AA-AAC4-7CB21EC4315C}.Release|x86.Build.0 = Release|Win32
+		{1527FC51-C6B5-4B21-8E34-214E91AA2DC2}.Debug|x64.ActiveCfg = Debug|x64
+		{1527FC51-C6B5-4B21-8E34-214E91AA2DC2}.Debug|x64.Build.0 = Debug|x64
+		{1527FC51-C6B5-4B21-8E34-214E91AA2DC2}.Debug|x86.ActiveCfg = Debug|Win32
+		{1527FC51-C6B5-4B21-8E34-214E91AA2DC2}.Debug|x86.Build.0 = Debug|Win32
+		{1527FC51-C6B5-4B21-8E34-214E91AA2DC2}.Release|x64.ActiveCfg = Release|x64
+		{1527FC51-C6B5-4B21-8E34-214E91AA2DC2}.Release|x64.Build.0 = Release|x64
+		{1527FC51-C6B5-4B21-8E34-214E91AA2DC2}.Release|x86.ActiveCfg = Release|Win32
+		{1527FC51-C6B5-4B21-8E34-214E91AA2DC2}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
