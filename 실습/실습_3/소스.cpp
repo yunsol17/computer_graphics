@@ -165,5 +165,3 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
         break;
     }
 }
-
-// 구조체에서 width,height를 0.25f로 고정해버리니까 문제가 발생하는것 같음.keyup을 해야 작동이 되게 해야할것 같음. 사각형의 크기가 이상하게 설정이 됨. 
