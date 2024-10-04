@@ -12,8 +12,8 @@ using namespace std;
 
 struct randRect {
     float x, y;
-    float width = 0.25f, height = 0.25f;
-    float dx = 0.01f, dy = 0.01f;
+    float initX, initY;
+    float width = 0.1f, height = 0.1f;
     GLclampf r, g, b;
 };
 
@@ -23,24 +23,23 @@ random_device rd;
 default_random_engine dre(rd());
 uniform_real_distribution<float> randomPosition(-1.0f, 1.0f);
 uniform_real_distribution<float> randomColor(0.0f, 1.0f);
-uniform_real_distribution<float> randomSize(-0.05f, 0.05f);
+uniform_int_distribution<int> randomCount(20, 40);
 
 GLvoid drawScene(GLvoid);
 GLvoid Reshape(int w, int h);
 GLvoid Keyboard(unsigned char key, int x, int y);
 GLvoid Mouse(int button, int state, int x, int y);
-GLvoid Timer(int value);
+GLvoid Motion(int x, int y);
+GLvoid eraseRectangles();
 
 int window_Width = 800;
 int window_Height = 600;
 
-float back_r = 0.7f, back_g = 0.7f, back_b = 0.7f;
+float back_r = 1.0f, back_g = 1.0f, back_b = 1.0f;
 
-const int maxRects = 5;
-bool isMovingDiagonal = false;
-bool isMovingZigzag = false;
-bool isChangeSize = false;
-bool isChangeColor = false;
+bool isErasing = false;
+bool isInitialized = false;
+randRect eraser;
 
 void main(int argc, char** argv) {
     glutInit(&argc, argv);
@@ -61,8 +60,8 @@ void main(int argc, char** argv) {
     glutDisplayFunc(drawScene);
     glutKeyboardFunc(Keyboard);
     glutMouseFunc(Mouse);
+    glutMotionFunc(Motion);
     glutReshapeFunc(Reshape);
-    glutTimerFunc(16, Timer, 0);
     glutMainLoop();
 }
 
@@ -70,10 +69,32 @@ GLvoid drawScene() {
     glClearColor(back_r, back_g, back_b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    if (!isInitialized) {
+        int numRects = randomCount(dre);
+        for (int i = 0; i < numRects; ++i) {
+            randRect newRects;
+            newRects.x = randomPosition(dre);
+            newRects.y = randomPosition(dre);
+            newRects.r = randomColor(dre);
+            newRects.g = randomColor(dre);
+            newRects.b = randomColor(dre);
+
+            rects.push_back(newRects);
+        }
+        isInitialized = true;
+    }
+
     for (const auto& rect : rects) {
         glColor3f(rect.r, rect.g, rect.b);
         glRectf(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height);
     }
+
+    if (isErasing) {
+        glColor3f(eraser.r, eraser.g, eraser.b);
+        glRectf(eraser.x, eraser.y, eraser.x + eraser.width, eraser.y + eraser.height);
+    }
+
+    eraseRectangles();
     glutSwapBuffers();
 }
 
@@ -86,15 +107,34 @@ GLvoid Mouse(int button, int state, int x, int y) {
     GLfloat y_opengl = 1.0f - (2.0f * y / window_Height);
 
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-        if (rects.size() < maxRects) {
-            randRect newRect;
-            newRect.x = x_opengl - newRect.width / 2.0f;
-            newRect.y = y_opengl - newRect.height / 2.0f;
-            newRect.r = randomColor(dre);
-            newRect.g = randomColor(dre);
-            newRect.b = randomColor(dre);
-            rects.push_back(newRect);
-        }
+        isErasing = true;
+
+        eraser.x = x_opengl - eraser.width / 2.0f;
+        eraser.y = y_opengl - eraser.height / 2.0f;
+
+        eraser.width = 0.2f;
+        eraser.height = 0.2f;
+        eraser.r = 0.0f;
+        eraser.g = 0.0f;
+        eraser.b = 0.0f;
+
+        glutPostRedisplay();
+    }
+    else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
+        isErasing = false;
+
+        glutPostRedisplay();
+    }
+}
+
+GLvoid Motion(int x, int y) {
+    GLfloat x_opengl = (2.0f * x / window_Width) - 1.0f;
+    GLfloat y_opengl = 1.0f - (2.0f * y / window_Height);
+
+    if (isErasing) {
+        eraser.x = x_opengl - eraser.width / 2.0f;
+        eraser.y = y_opengl - eraser.height / 2.0f;
+
         glutPostRedisplay();
     }
 }
@@ -102,98 +142,52 @@ GLvoid Mouse(int button, int state, int x, int y) {
 GLvoid Keyboard(unsigned char key, int x, int y) {
     randRect newRect;
     switch (key) {
-    case 'a':
-        isMovingDiagonal = !isMovingDiagonal;
-        break;
-    case 'b':
-        isMovingZigzag = !isMovingZigzag;
-        break;
-    case 'c':
-        isChangeSize = !isChangeSize;
-        break;
-    case 'd':
-        isChangeColor = !isChangeColor;
-        break;
-    case 's':
-        if (isMovingDiagonal == true) {
-            isMovingDiagonal = false;
-        }
-        if (isMovingZigzag == true) {
-            isMovingZigzag = false;
-        }
-        if (isChangeSize == true) {
-            isChangeSize = false;
-        }
-        if (isChangeColor == true) {
-            isChangeColor = false;
-        }
-        break;
-    case 'm':
-        break;
-    case 'r':
-        break;
     case 'q':
         glutLeaveMainLoop();
+        break;
+    case 'r':
+        rects.clear();
+
+        int numRects = randomCount(dre);
+        for (int i = 0; i < numRects; ++i) {
+            randRect newRect;
+            newRect.x = randomPosition(dre);
+            newRect.y = randomPosition(dre);
+            newRect.r = randomColor(dre);
+            newRect.g = randomColor(dre);
+            newRect.b = randomColor(dre);
+
+            rects.push_back(newRect);
+        }
+
+        glutPostRedisplay();
         break;
     }
 }
 
-GLvoid Timer(int value) {
-    if (isMovingDiagonal) {
-        for (auto& rect : rects) {
-            rect.x += rect.dx;
-            rect.y += rect.dy;
+GLvoid eraseRectangles() {
+    if (!isErasing) return;
 
-            if (rect.x <= -1.0f || rect.x + rect.width >= 1.0f) {
-                rect.dx = -rect.dx;
-            }
-            if (rect.y <= -1.0f || rect.y + rect.height >= 1.0f) {
-                rect.dy = -rect.dy;
-            }
+    vector<randRect> newRects;
+
+    for (int i = 0; i < rects.size(); ++i) {
+        if (eraser.x < rects[i].x + rects[i].width &&
+            eraser.x + eraser.width > rects[i].x &&
+            eraser.y < rects[i].y + rects[i].height &&
+            eraser.y + eraser.height > rects[i].y) {
+
+            eraser.r = rects[i].r;
+            eraser.g = rects[i].g;
+            eraser.b = rects[i].b;
+
+            eraser.width += rects[i].width / 2;
+            eraser.height += rects[i].height / 2;
+
+        }
+        else {
+            newRects.push_back(rects[i]);
         }
     }
 
-    if (isMovingZigzag) {
-        static int zigzagCounter = 0;
-        zigzagCounter++;
-
-        if (zigzagCounter % 30 == 0) {
-            for (auto& rect : rects) {
-                rect.dx = -rect.dx;
-            }
-        }
-        for (auto& rect : rects) {
-            rect.x += rect.dx;
-            rect.y += rect.dy;
-
-            if (rect.x <= -1.0f || rect.x + rect.width >= 1.0f) {
-                rect.dx = -rect.dx;
-            }
-            if (rect.y <= -1.0f || rect.y + rect.height >= 1.0f) {
-                rect.dy = -rect.dy;
-            }
-        }
-    }
-
-    if (isChangeSize) {
-        for (auto& rect : rects) {
-            rect.width += randomSize(dre);
-            rect.height += randomSize(dre);
-
-            if (rect.width > 0.5f) rect.width = 0.5f;
-            if (rect.height > 0.5f) rect.height = 0.5f;
-            if (rect.width < 0.05f) rect.width = 0.05f;
-            if (rect.height < 0.05f) rect.height = 0.05f;
-        }
-    }
-
-    if (isChangeColor) {
-        for (auto& rect : rects) {
-            rect.r = randomColor(dre);
-            rect.g = randomColor(dre);
-            rect.b = randomColor(dre);
-        }
-    }
-    glutPostRedisplay();
-    glutTimerFunc(50, Timer, 0);
+    rects = newRects;
 }
