@@ -31,6 +31,7 @@ void make_fragmentShaders();
 GLuint make_shaderProgram();
 GLvoid drawScene();
 GLvoid Reshape(int w, int h);
+GLvoid Timer(int value);
 
 GLint width, height;
 GLuint shaderProgramID;
