@@ -70,13 +70,13 @@ bool isMoving = false;
 bool isZigzag = false;
 
 bool isSquareSpiral = false;
-GLfloat spiralStep = 0.05f;  // 각 스텝에서 이동할 거리
-GLfloat currentStep = 0.0f;  // 현재 이동한 거리
+GLfloat spiralStep = 0.05f;
+GLfloat currentStep = 0.0f;
 int direction = 0;
 
 bool isCircularSpiral = false;
-GLfloat theta = 0.0f;  // 각도
-GLfloat radius = 0.05f;  // 초기 반지름
+GLfloat theta = 0.0f;
+GLfloat radius = 0.05f;
 GLfloat radiusIncrement = 0.01f;
 
 void InitBuffer() {
@@ -276,58 +276,51 @@ GLvoid Timer(int value) {
                         triangle.x += triangle.vx;
 
                         if (triangle.x - halfSize <= -1.0f && triangle.vx < 0) {
-                            triangle.vx = 0.0f;  // 수평 이동 멈춤
-                            triangle.isMovingDown = true; // 아래로 이동 시작
+                            triangle.vx = 0.0f;
+                            triangle.isMovingDown = true;
                         }
 
-                        // 아래로 이동 후 오른쪽으로 전환
                         if (triangle.isMovingDown) {
                             triangle.y -= 0.05f;
                             triangle.isMovingDown = false;
-                            triangle.vx = 0.05f;  // 오른쪽으로 이동 시작
+                            triangle.vx = 0.05f;
                         }
 
-                        // 오른쪽 벽에 닿았을 때
                         if (triangle.x + halfSize >= 1.0f && triangle.vx > 0) {
-                            triangle.vx = 0.0f;  // 수평 이동 멈춤
-                            triangle.isMovingDown = true; // 아래로 이동 시작
+                            triangle.vx = 0.0f;
+                            triangle.isMovingDown = true;
                         }
 
-                        // 아래로 이동 후 왼쪽으로 전환
                         if (triangle.isMovingDown && triangle.vx == 0.0f) {
                             triangle.y -= 0.05f;
                             triangle.isMovingDown = false;
-                            triangle.vx = -0.05f;  // 왼쪽으로 이동 시작
+                            triangle.vx = -0.05f;
                         }
 
-                        // 아래쪽 벽에 닿았을 때 위로 튕김 구현
                         if (triangle.y - halfSize <= -1.0f) {
-                            triangle.isMovingUp = true;  // 위로 이동 상태로 전환
-                            triangle.vy = 0.05f;  // 위로 이동 시작
+                            triangle.isMovingUp = true;
+                            triangle.vy = 0.05f;
                         }
 
-                        // 위로 이동 후 다시 오른쪽 이동
                         if (triangle.isMovingUp) {
-                            triangle.y += triangle.vy;  // 위로 이동
-                            if (triangle.y + halfSize >= 1.0f) {  // 위쪽 벽에 닿았을 때
-                                triangle.isMovingUp = false;  // 위로 이동 멈춤
-                                triangle.isMovingDown = true;  // 아래로 이동 상태
-                                triangle.vy = -0.05f;  // 아래로 이동 시작
+                            triangle.y += triangle.vy;
+                            if (triangle.y + halfSize >= 1.0f) {
+                                triangle.isMovingUp = false;
+                                triangle.isMovingDown = true;
+                                triangle.vy = -0.05f;
                             }
                         }
 
-                        // 위쪽 벽에 닿았을 때 아래로 이동 전환
                         if (triangle.y + halfSize >= 1.0f && triangle.vy > 0) {
-                            triangle.isMovingDown = true; // 아래로 이동 상태
-                            triangle.vx = 0.0f;  // 수평 이동 멈춤
-                            triangle.vy = -0.05f;  // 아래로 이동 시작
+                            triangle.isMovingDown = true;
+                            triangle.vx = 0.0f;
+                            triangle.vy = -0.05f;
                         }
 
-                        // 아래로 이동 후 왼쪽으로 전환
                         if (triangle.isMovingDown && triangle.vx == 0.0f) {
-                            triangle.y -= triangle.vy;  // 아래로 이동
+                            triangle.y -= triangle.vy;
                             triangle.isMovingDown = false;
-                            triangle.vx = -0.05f;  // 왼쪽으로 이동 시작
+                            triangle.vx = -0.05f;
                         }
                     }
                 }
@@ -335,40 +328,39 @@ GLvoid Timer(int value) {
 
             if (isSquareSpiral) {
                 switch (direction) {
-                case 0:  // 오른쪽 이동
+                case 0:
                     triangle.x += spiralStep;
                     if (triangle.x + halfSize >= 1.0f - currentStep) direction = 1;
                     break;
-                case 1:  // 위쪽 이동
+                case 1:
                     triangle.y += spiralStep;
                     if (triangle.y + halfSize >= 1.0f - currentStep) direction = 2;
                     break;
-                case 2:  // 왼쪽 이동
+                case 2:
                     triangle.x -= spiralStep;
                     if (triangle.x - halfSize <= -1.0f + currentStep) direction = 3;
                     break;
-                case 3:  // 아래쪽 이동
+                case 3:
                     triangle.y -= spiralStep;
                     if (triangle.y - halfSize <= -1.0f + currentStep) {
-                        direction = 0;  // 다시 오른쪽으로
-                        currentStep += 0.05f;  // 다음 스텝 크기 증가
+                        direction = 0;
+                        currentStep += 0.05f;
                     }
                     break;
                 }
             }
 
-            // 원 스파이럴 로직 (명령어 4)
             if (isCircularSpiral) {
-                theta += 0.05f;  // 각도 증가
-                radius += radiusIncrement;  // 반지름 증가
-                triangle.x = radius * cos(theta);  // 원형 궤적 계산
-                triangle.y = radius * sin(theta);  // 원형 궤적 계산
+                theta += 0.05f;
+                radius += radiusIncrement;
+                triangle.x = radius * cos(theta);
+                triangle.y = radius * sin(theta);
             }
         }
     }
 
     glutPostRedisplay();
-    glutTimerFunc(50, Timer, 0); // 타이머 재설정
+    glutTimerFunc(50, Timer, 0);
 }
 
 GLvoid drawScene() {
