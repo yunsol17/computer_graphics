@@ -76,8 +76,8 @@ int direction = 0;
 
 bool isCircularSpiral = false;
 GLfloat theta = 0.0f;
-GLfloat radius = 0.05f;
-GLfloat radiusIncrement = 0.01f;
+GLfloat radius = 0.01f;
+GLfloat radiusIncrement = 0.001f;
 
 void InitBuffer() {
     glGenVertexArrays(1, &vao);
@@ -351,7 +351,7 @@ GLvoid Timer(int value) {
             }
 
             if (isCircularSpiral) {
-                theta += 0.05f;
+                theta += 0.01f;
                 radius += radiusIncrement;
                 triangle.x = radius * cos(theta);
                 triangle.y = radius * sin(theta);
@@ -436,7 +436,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
     case '4':
         isCircularSpiral = !isCircularSpiral;
         theta = 0.0f;
-        radius = 0.05f;
+        radius = 0.01f;
         glutPostRedisplay();
         break;
     case 'q':
