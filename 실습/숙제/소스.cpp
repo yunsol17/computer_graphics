@@ -50,6 +50,11 @@ GLvoid Keyboard(unsigned char key, int x, int y);
 GLvoid Timer(int value);
 GLvoid Mouse(int button, int state, int x, int y);
 
+struct Vertex {
+    GLfloat x, y, z;
+    glm::vec3 color;
+};
+
 int window_Width = 800;
 int window_Height = 600;
 
@@ -73,6 +78,8 @@ std::vector<glm::vec3> velocities; // 각 도형의 속도
 
 std::vector<GLuint> newPolygonVAOs;
 std::vector<std::vector<glm::vec3>> newPolygonVertices; // 새로 생성된 다각형의 정점들
+
+GLfloat zRotation = 0.0f;
 
 glm::vec2 ScreenToOpenGLCoords(int x, int y, int windowWidth, int windowHeight) {
     float oglX = 2.0f * x / windowWidth - 1.0f;
@@ -99,11 +106,6 @@ bool LineIntersection(const glm::vec2& p1, const glm::vec2& p2, const glm::vec2&
 
     return false;
 }
-
-struct Vertex {
-    GLfloat x, y, z;
-    glm::vec3 color;
-};
 
 void InitBuffer(GLuint& vao, GLuint* vbo, const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices) {
     glGenVertexArrays(1, &vao);
@@ -218,15 +220,13 @@ void SelectRandomShape() {
 
 void main(int argc, char** argv) {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
     glutInitWindowPosition(100, 100);
     glutInitWindowSize(window_Width, window_Height);
     glutCreateWindow("숙제");
 
     glewExperimental = GL_TRUE;
     glewInit();
-
-    glEnable(GL_DEPTH_TEST);
 
     InitTriangle();
     InitRectangle();
@@ -301,6 +301,7 @@ void PerformTriangleSplit(const std::vector<glm::vec2>& triangleVertices, const 
         newTriangle2.push_back(intersections[0]);
         newTriangle2.push_back(intersections[1]);
         newTriangle2.push_back(triangleVertices[(intersectedEdges[0] + 1) % 3]);
+        newTriangle2.push_back(triangleVertices[(intersectedEdges[1] + 1) % 3]);
 
         std::vector<glm::vec3> newTriangle1_3D, newTriangle2_3D;
         for (const auto& vertex : newTriangle1) {
@@ -397,6 +398,7 @@ GLvoid drawScene() {
     for (size_t i = 0; i < activeShapes.size(); ++i) {
         glm::mat4 modelMatrix = glm::mat4(1.0f);
         modelMatrix = glm::translate(modelMatrix, positions[i]);  // 각 도형의 현재 위치로 변환
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(-zRotation), glm::vec3(0.0f, 0.0f, 1.0f));
         glUniformMatrix4fv(modelLocation, 1, GL_FALSE, &modelMatrix[0][0]);
 
         // 현재 활성화된 도형을 그리기
@@ -491,6 +493,11 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 }
 
 GLvoid Timer(int value) {
+    zRotation += 1.0f;
+    if (zRotation >= 360.0f) {
+        zRotation -= 360.0f; // 0~360도 범위로 유지
+    }
+
     if (animationTimer >= animationInterval) {
         SelectRandomShape();
         animationTimer = 0;
@@ -572,8 +579,6 @@ GLvoid Mouse(int button, int state, int x, int y) {
             std::cout << "Error : No triangles available for splitting." << std::endl;
             return;
         }
-
-        
     }
 }
 
