@@ -60,7 +60,7 @@ int window_Height = 600;
 
 int startX, startY, endX, endY;
 
-std::vector<int> activeShapes; //(0: 삼각형, 1: 사각형, 2: 오각형, 3: 육각형)
+std::vector<int> activeShapes;
 std::vector<glm::vec3> positions;
 glm::vec3 velocity(0.01f, -0.001f, 0.0f);
 int animationTimer = 0;
@@ -73,19 +73,24 @@ std::vector<std::vector<glm::vec3>> paths;
 glm::vec3 boxPosition(0.0f, -0.8f, 0.0f);
 glm::vec3 boxVelocity(0.01f, 0.0f, 0.0f);
 
-glm::vec3 gravity(0.0f, -0.001f, 0.0f); // 중력 가속도
-std::vector<glm::vec3> velocities; // 각 도형의 속도
+glm::vec3 gravity(0.0f, -0.001f, 0.0f);
+std::vector<glm::vec3> velocities;
+std::vector<glm::vec3> newVelocities;
 
 std::vector<GLuint> newPolygonVAOs;
-std::vector<std::vector<glm::vec3>> newPolygonVertices; // 새로 생성된 다각형의 정점들
+std::vector<std::vector<glm::vec3>> newPolygonVertices;
 std::vector<glm::vec3> newPositions;
+std::vector<glm::vec2> newSizes;
+std::vector<size_t> attachedToBox;
 
 GLfloat zRotation = 0.0f;
 glm::vec3 initialPosition(-1.5f, 0.5f, 0.0f);
 
+bool isCollision = false;
+
 glm::vec2 ScreenToOpenGLCoords(int x, int y, int windowWidth, int windowHeight) {
     float oglX = 2.0f * x / windowWidth - 1.0f;
-    float oglY = 1.0f - 2.0f * y / windowHeight; // Y 축은 반전 필요
+    float oglY = 1.0f - 2.0f * y / windowHeight;
     return glm::vec2(oglX, oglY);
 }
 
@@ -106,6 +111,19 @@ bool LineIntersection(const glm::vec2& p1, const glm::vec2& p2, const glm::vec2&
         return true;
     }
 
+    return false;
+}
+
+bool CheckCollisionWithBoxAndPlace(glm::vec3& objectPosition, glm::vec3& objectVelocity, const glm::vec2& objectSize, const glm::vec3& boxPosition, const glm::vec2& boxSize) {
+    if (objectPosition.x + objectSize.x / 2 >= boxPosition.x - boxSize.x / 2 &&
+        objectPosition.x - objectSize.x / 2 <= boxPosition.x + boxSize.x / 2 &&
+        objectPosition.y - objectSize.y / 2 <= boxPosition.y + boxSize.y / 2 &&
+        objectPosition.y + objectSize.y / 2 >= boxPosition.y - boxSize.y / 2) {
+
+        objectPosition.y = boxPosition.y + objectSize.y / 2;
+        objectVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
+        return true;
+    }
     return false;
 }
 
@@ -279,6 +297,20 @@ void CreateNewPolygonVAO(const std::vector<glm::vec3>& vertices) {
     newPolygonVertices.push_back(vertices);
 }
 
+glm::vec2 CalculateSize(const std::vector<glm::vec2>& vertices) {
+    float minX = vertices[0].x, maxX = vertices[0].x;
+    float minY = vertices[0].y, maxY = vertices[0].y;
+
+    for (const auto& vertex : vertices) {
+        if (vertex.x < minX) minX = vertex.x;
+        if (vertex.x > maxX) maxX = vertex.x;
+        if (vertex.y < minY) minY = vertex.y;
+        if (vertex.y > maxY) maxY = vertex.y;
+    }
+
+    return glm::vec2(maxX - minX, maxY - minY);
+}
+
 void PerformTriangleSplit(const std::vector<glm::vec2>& triangleVertices, const glm::vec2& start, const glm::vec2& end) {
     std::vector<glm::vec2> intersections; // 교차점 저장
     std::vector<size_t> intersectedEdges; // 교차한 변의 인덱스 저장
@@ -310,6 +342,11 @@ void PerformTriangleSplit(const std::vector<glm::vec2>& triangleVertices, const 
         newTriangle2.push_back(triangleVertices[(intersectedEdges[0] + 1) % 3]);
         newTriangle2.push_back(triangleVertices[(intersectedEdges[1] + 1) % 3]);
 
+        glm::vec2 size1 = CalculateSize(newTriangle1); 
+        glm::vec2 size2 = CalculateSize(newTriangle2);
+        newSizes.push_back(size1);
+        newSizes.push_back(size2);
+
         std::vector<glm::vec3> newTriangle1_3D, newTriangle2_3D;
         for (const auto& vertex : newTriangle1) {
             newTriangle1_3D.emplace_back(vertex.x, vertex.y, 0.0f);
@@ -331,17 +368,14 @@ void PerformTriangleSplit(const std::vector<glm::vec2>& triangleVertices, const 
         CreateNewPolygonVAO(newTriangle2_3D);
 
         glm::vec3 existingPosition = positions[0];
+        positions.erase(positions.begin());
+        activeShapes.erase(activeShapes.begin());
 
         // 쪼개진 도형의 위치를 기존 위치로 설정
         newPositions.push_back(existingPosition); // 첫 번째 쪼개진 도형의 위치
         newPositions.push_back(existingPosition); // 두 번째 쪼개진 도형의 위치
-
-        velocities.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
-        velocities.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
-
-        // 기존 도형 관리 로직
-        positions.erase(positions.begin());
-        activeShapes.erase(activeShapes.begin());
+        newVelocities.push_back(glm::vec3(0.0f, -0.001f, 0.0f));
+        newVelocities.push_back(glm::vec3(0.0f, -0.001f, 0.0f));
     }
 }
 
@@ -472,7 +506,7 @@ GLvoid drawScene() {
     }
 
     glm::mat4 boxModelMatrix = glm::mat4(1.0f);
-    boxModelMatrix = glm::translate(boxModelMatrix, boxPosition); // 박스를 화면 아래로 이동 (필요에 따라 조정 가능)
+    boxModelMatrix = glm::translate(boxModelMatrix, boxPosition);
     glUniformMatrix4fv(modelLocation, 1, GL_FALSE, &boxModelMatrix[0][0]);
 
     glBindVertexArray(vaoBox);
@@ -513,7 +547,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 GLvoid Timer(int value) {
     zRotation += 1.0f;
     if (zRotation >= 360.0f) {
-        zRotation -= 360.0f; // 0~360도 범위로 유지
+        zRotation -= 360.0f;
     }
 
     if (animationTimer >= animationInterval) {
@@ -524,16 +558,14 @@ GLvoid Timer(int value) {
         animationTimer++;
     }
 
-    for (size_t i = 0; i < positions.size();) { // for문을 i++ 없이 사용하여 조건에 따라 제거 가능
-        positions[i] += velocity;  // 도형의 이동
+    for (size_t i = 0; i < positions.size();) {
+        positions[i] += velocity;
 
-        // 중력 적용 (분리된 삼각형에만 적용)
         if (i < velocities.size()) {
-            velocities[i] += gravity; // 중력 가속도 적용
-            positions[i] += velocities[i]; // 속도에 따른 위치 이동
+            velocities[i] += gravity;
+            positions[i] += velocities[i];
         }
 
-        // 화면 경계를 벗어나는 경우 도형 제거 (예시로 -1.0 ~ 1.0 범위를 기준으로 설정)
         if (positions[i].x > 1.2f) {
             if (i < activeShapes.size()) activeShapes.erase(activeShapes.begin() + i);
             if (i < positions.size()) positions.erase(positions.begin() + i);
@@ -543,18 +575,30 @@ GLvoid Timer(int value) {
             continue;
         }
 
-        // paths 벡터가 활성화된 경우 경로를 추가
         if (drawPath && i < paths.size()) {
             paths[i].push_back(positions[i]);
         }
 
-        ++i; // 다음 도형으로 이동
+        ++i;
     }
 
-    // 박스의 이동 및 경계 검사 (예시)
+    for (size_t i = 0; i < newPositions.size(); ++i) {
+        if (i < newVelocities.size()) {
+                newVelocities[i] += gravity;
+                newPositions[i] += newVelocities[i];
+            
+                glm::vec2 boxSize(0.4f, 0.1f);
+                if (CheckCollisionWithBoxAndPlace(newPositions[i], newVelocities[i], newSizes[i], boxPosition, boxSize)) {
+                    newVelocities[i] = glm::vec3(0.0f, 0.0f, 0.0f);
+                    newPositions[i] += boxVelocity;
+                    attachedToBox.push_back(i);
+                }
+        }
+    }
+
     boxPosition += boxVelocity;
     if (boxPosition.x > 0.85f || boxPosition.x < -0.85f) {
-        boxVelocity.x = -boxVelocity.x;  // 화면 경계를 넘으면 속도 반전
+        boxVelocity.x = -boxVelocity.x;
     }
 
     glutPostRedisplay();
@@ -563,12 +607,10 @@ GLvoid Timer(int value) {
 
 GLvoid Mouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-        // 마우스 클릭 시, 드래그 시작 지점 저장
         startX = x;
         startY = y;
     }
     else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
-        // 마우스 버튼을 놓았을 때, 드래그 종료 지점 저장
         endX = x;
         endY = y;
 
@@ -576,7 +618,7 @@ GLvoid Mouse(int button, int state, int x, int y) {
         glm::vec2 end = ScreenToOpenGLCoords(endX, endY, window_Width, window_Height);
 
         if (!positions.empty()) {
-            glm::vec3 currentPosition = positions[0]; // 삼각형의 현재 위치
+            glm::vec3 currentPosition = positions[0];
             std::vector<glm::vec2> baseTriangleVertices = {
                 glm::vec2(0.0f, 0.133f),
                 glm::vec2(-0.2f, -0.133f),
@@ -588,7 +630,6 @@ GLvoid Mouse(int button, int state, int x, int y) {
                 glm::vec2 transformedVertex = glm::vec2(vertex.x + currentPosition.x, vertex.y + currentPosition.y);
                 triangleVertices.push_back(transformedVertex);
             }
-            // 드래그된 선을 기준으로 도형을 자르기
             PerformTriangleSplit(triangleVertices, start, end);
 
             glutPostRedisplay();
