@@ -78,8 +78,10 @@ std::vector<glm::vec3> velocities; // 각 도형의 속도
 
 std::vector<GLuint> newPolygonVAOs;
 std::vector<std::vector<glm::vec3>> newPolygonVertices; // 새로 생성된 다각형의 정점들
+std::vector<glm::vec3> newPositions;
 
 GLfloat zRotation = 0.0f;
+glm::vec3 initialPosition(-1.5f, 0.5f, 0.0f);
 
 glm::vec2 ScreenToOpenGLCoords(int x, int y, int windowWidth, int windowHeight) {
     float oglX = 2.0f * x / windowWidth - 1.0f;
@@ -248,28 +250,33 @@ void main(int argc, char** argv) {
 }
 
 void CreateNewPolygonVAO(const std::vector<glm::vec3>& vertices) {
-    // 새로운 VAO와 VBO 생성
     GLuint vao, vbo;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
+
+    std::vector<Vertex> coloredVertices;
+    for (const auto& vertex : vertices) {
+        coloredVertices.push_back({ vertex.x, vertex.y, vertex.z, glm::vec3(0.0f, 0.0f, 1.0f) }); // Blue color
+    }
 
     // VAO 바인딩
     glBindVertexArray(vao);
 
     // VBO 바인딩 및 데이터 설정
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), vertices.data(), GL_STATIC_DRAW);
-
+    glBufferData(GL_ARRAY_BUFFER, coloredVertices.size() * sizeof(Vertex), coloredVertices.data(), GL_DYNAMIC_DRAW);
     // 정점 속성 설정 (예: 위치)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, color));
+    glEnableVertexAttribArray(1);
 
     // VAO 바인딩 해제
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    // 필요에 따라 새로운 VAO/VBO 관리 (예: 전역 벡터에 추가)
-    // 예: 저장된 VAO와 관련된 데이터를 저장하는 구조체나 벡터에 저장
+    newPolygonVAOs.push_back(vao);
+    newPolygonVertices.push_back(vertices);
 }
 
 void PerformTriangleSplit(const std::vector<glm::vec2>& triangleVertices, const glm::vec2& start, const glm::vec2& end) {
@@ -323,11 +330,18 @@ void PerformTriangleSplit(const std::vector<glm::vec2>& triangleVertices, const 
         CreateNewPolygonVAO(newTriangle1_3D);
         CreateNewPolygonVAO(newTriangle2_3D);
 
-        // 속도를 추가하여 중력이 적용되도록 설정
-        velocities.push_back(glm::vec3(0.0f, 0.0f, 0.0f)); // 첫 번째 삼각형의 속도
-        velocities.push_back(glm::vec3(0.0f, 0.0f, 0.0f)); // 두 번째 삼각형의 속도
-        positions.push_back(glm::vec3(0.0f, 0.0f, 0.0f)); // 위치도 추가
-        positions.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+        glm::vec3 existingPosition = positions[0];
+
+        // 쪼개진 도형의 위치를 기존 위치로 설정
+        newPositions.push_back(existingPosition); // 첫 번째 쪼개진 도형의 위치
+        newPositions.push_back(existingPosition); // 두 번째 쪼개진 도형의 위치
+
+        velocities.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+        velocities.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+
+        // 기존 도형 관리 로직
+        positions.erase(positions.begin());
+        activeShapes.erase(activeShapes.begin());
     }
 }
 
@@ -424,12 +438,16 @@ GLvoid drawScene() {
             glBindVertexArray(0);
             break;
         }
+    }
 
-        if (i < newPolygonVAOs.size() && i < newPolygonVertices.size()) {
-            glBindVertexArray(newPolygonVAOs[i]);
-            glDrawArrays(GL_TRIANGLES, 0, newPolygonVertices[i].size());
-            glBindVertexArray(0);
-        }
+    for (size_t i = 0; i < newPolygonVAOs.size(); ++i) {
+        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::translate(modelMatrix, newPositions[i]);  // 새로 생성된 다각형의 위치로 변환
+        glUniformMatrix4fv(modelLocation, 1, GL_FALSE, &modelMatrix[0][0]);
+
+        glBindVertexArray(newPolygonVAOs[i]);
+        glDrawArrays(GL_TRIANGLES, 0, newPolygonVertices[i].size());
+        glBindVertexArray(0);
     }
 
     if (drawPath) {
@@ -516,7 +534,7 @@ GLvoid Timer(int value) {
         }
 
         // 화면 경계를 벗어나는 경우 도형 제거 (예시로 -1.0 ~ 1.0 범위를 기준으로 설정)
-        if (positions[i].x > 1.0f) {
+        if (positions[i].x > 1.2f) {
             if (i < activeShapes.size()) activeShapes.erase(activeShapes.begin() + i);
             if (i < positions.size()) positions.erase(positions.begin() + i);
             if (!paths.empty() && i < paths.size()) paths.erase(paths.begin() + i);
