@@ -145,7 +145,7 @@ void InitMap() {
 
     InitBuffer(vaoMap, vboMap, expandedVertices, indices);  // InitBuffer »£√‚
 }
-
+// git
 void main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
